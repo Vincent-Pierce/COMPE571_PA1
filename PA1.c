@@ -14,18 +14,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
-const uint32_t N = 500;
+const uint64_t N = 1000000000;
 
 /* Source Code *************************************************************************/
 int main()
 {
-    uint32_t sum = 0;
+    uint64_t sum = 0;
     clock_t start, end;
     
     start = clock();           // Start clock
-    for(int i=0;i<N;++i)
+    for(uint64_t i=0;i<N;++i)
     {
-        sum+=N;
+        sum+=i;
     }
     end = clock();             // End clock
     
@@ -33,7 +33,7 @@ int main()
     double time_taken = (double)(end - start);
     time_taken = time_taken / (double)(CLOCKS_PER_SEC);
 
-    printf("The total summation of 0 through %d is %d\n", N, sum);
+    printf("The total summation of 0 through %lu is %lu\n", N, sum);
     printf("The total time to perform the workload sequentially was %f seconds\n", time_taken);
     return 0;
 }
