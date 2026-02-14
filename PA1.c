@@ -18,7 +18,7 @@ int main()
 {
     uint64_t upperLimit = N[0];
     Baseline(upperLimit);
-    Multithreading(upperLimit, 2);
+    Multithreading(upperLimit, 8);
     return 0;
 }
 
@@ -27,9 +27,9 @@ void* threadWork(void* bounds)
     uint64_t* sum = malloc(sizeof(uint64_t)); 
     uint64_t localSum = 0;
     uint64_t* pBoundary = (uint64_t*)bounds; // make it a pointer so you can get the upper and lower bounds
-    printf("Array element passed in: %lu\n", pBoundary[0]);
-    uint64_t lowerLimit = *pBoundary;
-    uint64_t upperLimit = *(pBoundary++); 
+    uint64_t lowerLimit = pBoundary[0];
+    uint64_t upperLimit = pBoundary[1]; 
+    // printf("Lower Bound: %lu \n Upper Bound: %lu \n\n", lowerLimit, upperLimit);
     for(int i = lowerLimit; i < upperLimit; i++)
     {
         localSum += i;
@@ -37,59 +37,54 @@ void* threadWork(void* bounds)
     *sum = localSum;
     pthread_exit((void*)sum);
 }
+
 void Multithreading(uint64_t N, uint8_t NUM_THREADS)
 {
-    clock_t start, end = 0;
+    struct timespec start, end;
     uint64_t sum = 0;
     uint64_t upperLimit = N;
     uint64_t workLoad = N / NUM_THREADS;
 
-    pthread_t threads[8] = {0}; // TODO use dynamic memory create size NUM_THREADS
+    pthread_t* threads = malloc(NUM_THREADS * sizeof(pthread_t));
+    uint64_t* bounds = malloc((NUM_THREADS + 1)*sizeof(uint64_t));
     int err = 0;
     uint64_t* ret_val = 0;
-    uint64_t bounds[100] = {0}; // TODO use dynamic memory to initialize the array to NUM_THREADS
     
-    start = clock(); // work begins
+    // start = clock(); // work begins
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for(int i = 0; i < NUM_THREADS; i++) // create a thread for each NUM_THREADS
     {
-        bounds[i*2] = workLoad*i; 
-        bounds[i*2+1] = workLoad*(i+1); 
-        printf("bounds array at index %d is %lu\n", i, bounds[i]);
-        err = pthread_create(&threads[i], NULL, threadWork, (void*)bounds+i);
+        bounds[i] = workLoad*i; 
+        bounds[i+1] = workLoad*(i+1); 
+        // printf("bounds array at index %d is %lu\n, index %d is %lu\n\n", i, bounds[i], i+1, bounds[i+1]);
+        err = pthread_create(&threads[i], NULL, threadWork, (void*) bounds + (i * sizeof(uint64_t)));
         if(err)
         {
             printf("Bad thread\n");
-            kill(0); // terminate all processes
+            kill(0, SIGKILL); // terminate all processes
         }
     }
     for(int i = 0; i < NUM_THREADS; i++)
     {
         // wait for the threads here in the order you created them
         pthread_join(threads[i], (void**)&ret_val);
-        sum += *ret_val;
+        sum += *(uint64_t*)ret_val;
     }
-
-    end = clock(); // work complete 
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    // end = clock(); // work complete 
 
     // Calculate time betwen start and end clock
-    double time_taken = (double)(end - start);
-    time_taken = time_taken / (double)(CLOCKS_PER_SEC);
+    double time_taken = end.tv_sec - start.tv_sec; 
+    time_taken += (end.tv_nsec - start.tv_nsec) / 1e9;
 
     printf("The total summation of 0 through %lu with %d threads is %lu\n", upperLimit, NUM_THREADS, sum);
-    printf("The total time to perform the workload multithreading was %f seconds\n", time_taken);
+    printf("The total time to perform the workload multithreading was %f seconds\n\n\n", time_taken);
+
+    free(threads);
+    free(bounds);
 
 }
-
-
-
-
-
-
-
-
-
-
 
 void Baseline(uint64_t N)
 {
@@ -109,6 +104,6 @@ void Baseline(uint64_t N)
     time_taken = time_taken / (double)(CLOCKS_PER_SEC);
 
     printf("The total summation of 0 through %lu is %lu\n", upperLimit, sum);
-    printf("The total time to perform the workload sequentially was %f seconds\n", time_taken);
+    printf("The total time to perform the workload sequentially was %f seconds\n\n\n", time_taken);
     
 }

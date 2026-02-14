@@ -15,6 +15,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/sysinfo.h>
     
 /* Global Variables ********************************************************************/
 const uint64_t N[3] =           {100000000, 1000000000, 10000000000};
