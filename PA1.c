@@ -19,7 +19,70 @@ int main()
     uint64_t upperLimit = N[0];
     Baseline(upperLimit);
     Multithreading(upperLimit, 8);
+    Multiprocessing(upperLimit, 8);
     return 0;
+}
+
+
+void Multiprocessing(uint64_t N, uint8_t NUM_PROCESSES)
+{
+    struct timespec start, end;
+    pid_t pid;
+    pid_t* processes = malloc(sizeof(pid_t)*NUM_PROCESSES); // array of process ids 
+    uint64_t sum, accumulator = 0;
+    uint64_t workLoad = N / NUM_PROCESSES;
+    int fd[2]; // 0 read 1 write 
+    pipe(fd);
+
+    clock_gettime(CLOCK_MONOTONIC, &start); // start work
+
+    for(int i = 0; i<NUM_PROCESSES; i++) // spawn the processes
+    {
+        pid = fork();
+
+        if(pid == 0)
+        { // -------------- Child --------------
+            close(fd[0]); // child only writes 
+            doWork(workLoad*i, workLoad*(i+1), fd[1]); // child does work
+            close(fd[1]);
+            return; 
+        } // -------------- Child --------------
+        else
+        {
+            // close(fd[1]); // parent only reads
+            processes[i] = pid; // parent registers child
+        }
+    }
+    
+    for(int i = 0; i<NUM_PROCESSES; i++)
+    {
+        wait(processes+sizeof(pid_t)*i); // any child termination will unblock
+        size_t a = read(fd[0], &accumulator, sizeof(uint64_t));
+        sum += accumulator;
+    }
+    close(fd[0]);
+
+    clock_gettime(CLOCK_MONOTONIC, &end); // end clock
+
+    // Calculate time betwen start and end clock
+    double time_taken = end.tv_sec - start.tv_sec; 
+    time_taken += (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    printf("\n\nThe total summation of 0 through %lu with %d processes is %lu\n", N, NUM_PROCESSES, sum);
+    printf("The total time to perform the workload multiprocessing was %f seconds\n\n\n", time_taken);
+
+    free(processes);
+}
+void doWork(uint64_t lower, uint64_t upper, int pipe)
+{
+    uint64_t sum = 0;
+    int writePipe = dup(pipe);
+
+    for(int i = lower; i < upper; i++)
+    {
+        sum +=i;
+    }
+    write(writePipe, &sum, sizeof(sum)); 
 }
 
 void* threadWork(void* bounds)
@@ -90,18 +153,19 @@ void Baseline(uint64_t N)
 {
     uint64_t sum = 0;
     uint64_t upperLimit = N;
-    clock_t start, end = 0;
-    
-    start = clock();           // Start clock
+    struct timespec start, end;
+
+    clock_gettime(CLOCK_MONOTONIC, &start); // start clock
     for(int i=0;i<upperLimit;i++)    
     {
         sum+=i;
     }
-    end = clock();             // End clock
-    
+
+    clock_gettime(CLOCK_MONOTONIC, &end); // end clock
+
     // Calculate time betwen start and end clock
-    double time_taken = (double)(end - start);
-    time_taken = time_taken / (double)(CLOCKS_PER_SEC);
+    double time_taken = end.tv_sec - start.tv_sec; 
+    time_taken += (end.tv_nsec - start.tv_nsec) / 1e9;
 
     printf("The total summation of 0 through %lu is %lu\n", upperLimit, sum);
     printf("The total time to perform the workload sequentially was %f seconds\n\n\n", time_taken);

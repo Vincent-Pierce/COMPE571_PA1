@@ -18,7 +18,10 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/sysinfo.h>
+#include <semaphore.h>
+#include <sys/wait.h>
     
 /* Global Variables ********************************************************************/
 const uint64_t N[3] =           {100000000, 1000000000, 10000000000};
@@ -29,3 +32,5 @@ const uint8_t NUM_TASKS[3] =    {2, 4, 8};
 void Baseline(uint64_t N);
 void Multithreading(uint64_t N, uint8_t NUM_THREADS);
 void* threadWork(void* bounds);
+void Multiprocessing(uint64_t N, uint8_t NUM_PROCESSES);
+void doWork(uint64_t lower, uint64_t upper, int pipe);
